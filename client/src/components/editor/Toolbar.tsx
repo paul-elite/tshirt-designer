@@ -13,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import { useEditorStore } from '../../stores/editorStore';
 import { uploadsApi } from '../../services/api';
+import { applyTextEffect } from '../../utils/canvasArtwork';
 
 interface ToolbarProps {
   onAIClick: () => void;
@@ -40,7 +41,7 @@ export default function Toolbar({ onAIClick }: ToolbarProps) {
         // Add to canvas
         fabric.Image.fromURL(
           imageUrl,
-          (img) => {
+          (img: fabric.Image) => {
             // Scale image to fit print area
             const maxWidth = 200;
             const maxHeight = 250;
@@ -91,10 +92,14 @@ export default function Toolbar({ onAIClick }: ToolbarProps) {
       fontSize: 32,
       fontFamily: 'Arial',
       fill: '#000000',
+      fontWeight: 'bold',
+      lineHeight: 1,
+      charSpacing: 0,
       originX: 'center',
       originY: 'center',
     });
 
+    applyTextEffect(text, 'none', 32);
     canvas.add(text);
     canvas.setActiveObject(text);
     canvas.renderAll();

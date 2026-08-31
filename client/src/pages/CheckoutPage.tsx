@@ -20,7 +20,7 @@ type CheckoutStep = 'address' | 'shipping' | 'payment';
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { items, subtotal, fetchCart } = useCartStore();
+  const { items, fetchCart } = useCartStore();
 
   const [step, setStep] = useState<CheckoutStep>('address');
   const [addresses, setAddresses] = useState<Address[]>([]);

@@ -12,6 +12,7 @@ import {
   Droplets,
 } from 'lucide-react';
 import { useEditorStore } from '../../stores/editorStore';
+import { applyTextEffect, TextEffect } from '../../utils/canvasArtwork';
 import {
   TSHIRT_COLORS,
   TSHIRT_SIZES,
@@ -29,6 +30,18 @@ const FONTS = [
   'Courier New',
   'Impact',
   'Comic Sans MS',
+];
+
+const TEXT_EFFECTS: { value: TextEffect; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'archUp', label: 'Arch Up' },
+  { value: 'archDown', label: 'Arch Down' },
+  { value: 'wave', label: 'Wave' },
+  { value: 'bulge', label: 'Bulge' },
+  { value: 'pinch', label: 'Pinch' },
+  { value: 'slantLeft', label: 'Slant Left' },
+  { value: 'slantRight', label: 'Slant Right' },
+  { value: 'perspective', label: 'Perspective' },
 ];
 
 export default function PropertyPanel() {
@@ -60,6 +73,20 @@ export default function PropertyPanel() {
     fontWeight: 'normal',
     fontStyle: 'normal',
     underline: false,
+    charSpacing: 0,
+    lineHeight: 1,
+    textEffect: 'none' as TextEffect,
+    effectStrength: 32,
+    stroke: '#ffffff',
+    strokeWidth: 0,
+    shadowEnabled: false,
+    shadowColor: '#111111',
+    shadowOffsetX: 8,
+    shadowOffsetY: 8,
+    shadowBlur: 4,
+    extrudeEnabled: false,
+    extrudeColor: '#ef4444',
+    extrudeDepth: 8,
   });
 
   const [filters, setFilters] = useState({
@@ -71,7 +98,18 @@ export default function PropertyPanel() {
   // Update text props when selection changes
   useEffect(() => {
     if (selectedObject && selectedObject.type === 'i-text') {
-      const textObj = selectedObject as fabric.IText;
+      const textObj = selectedObject as fabric.IText & {
+        textEffect?: TextEffect;
+        effectStrength?: number;
+        stroke?: string;
+        strokeWidth?: number;
+        shadow?: fabric.Shadow | string | null;
+        extrudeEnabled?: boolean;
+        extrudeColor?: string;
+        extrudeDepth?: number;
+      };
+      const shadow =
+        textObj.shadow && typeof textObj.shadow !== 'string' ? textObj.shadow : undefined;
       setTextProps({
         text: textObj.text || '',
         fontSize: textObj.fontSize || 32,
@@ -80,6 +118,20 @@ export default function PropertyPanel() {
         fontWeight: (textObj.fontWeight as string) || 'normal',
         fontStyle: (textObj.fontStyle as string) || 'normal',
         underline: textObj.underline || false,
+        charSpacing: textObj.charSpacing || 0,
+        lineHeight: textObj.lineHeight || 1,
+        textEffect: textObj.textEffect || 'none',
+        effectStrength: textObj.effectStrength || 32,
+        stroke: textObj.stroke || '#ffffff',
+        strokeWidth: textObj.strokeWidth || 0,
+        shadowEnabled: Boolean(textObj.shadow) && !textObj.extrudeEnabled,
+        shadowColor: shadow?.color || '#111111',
+        shadowOffsetX: shadow?.offsetX || 8,
+        shadowOffsetY: shadow?.offsetY || 8,
+        shadowBlur: shadow?.blur || 4,
+        extrudeEnabled: Boolean(textObj.extrudeEnabled),
+        extrudeColor: textObj.extrudeColor || '#ef4444',
+        extrudeDepth: textObj.extrudeDepth || 8,
       });
     }
   }, [selectedObject]);
@@ -92,6 +144,59 @@ export default function PropertyPanel() {
     saveHistory();
 
     setTextProps((prev) => ({ ...prev, [prop]: value }));
+  };
+
+  const updateTextEffect = (effect: TextEffect, strength = textProps.effectStrength) => {
+    if (!canvas || !selectedObject || selectedObject.type !== 'i-text') return;
+
+    applyTextEffect(selectedObject as fabric.IText, effect, strength);
+    canvas.renderAll();
+    saveHistory();
+    setTextProps((prev) => ({ ...prev, textEffect: effect, effectStrength: strength }));
+  };
+
+  const updateTextShadow = (next: Partial<typeof textProps>) => {
+    if (!canvas || !selectedObject || selectedObject.type !== 'i-text') return;
+
+    const props = { ...textProps, ...next };
+    const textObj = selectedObject as fabric.IText & {
+      extrudeEnabled?: boolean;
+      extrudeColor?: string;
+      extrudeDepth?: number;
+    };
+
+    if (props.extrudeEnabled) {
+      textObj.extrudeEnabled = true;
+      textObj.extrudeColor = props.extrudeColor;
+      textObj.extrudeDepth = props.extrudeDepth;
+      textObj.set(
+        'shadow',
+        new fabric.Shadow({
+          color: props.extrudeColor,
+          blur: 0,
+          offsetX: props.extrudeDepth,
+          offsetY: props.extrudeDepth,
+        })
+      );
+    } else if (props.shadowEnabled) {
+      textObj.extrudeEnabled = false;
+      textObj.set(
+        'shadow',
+        new fabric.Shadow({
+          color: props.shadowColor,
+          blur: props.shadowBlur,
+          offsetX: props.shadowOffsetX,
+          offsetY: props.shadowOffsetY,
+        })
+      );
+    } else {
+      textObj.extrudeEnabled = false;
+      textObj.set('shadow', undefined);
+    }
+
+    canvas.renderAll();
+    saveHistory();
+    setTextProps(props);
   };
 
   const deleteSelected = () => {
@@ -436,6 +541,184 @@ export default function PropertyPanel() {
                     >
                       U
                     </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm text-gray-600 mb-1 block">Letter Spacing</label>
+                      <input
+                        type="range"
+                        min={-100}
+                        max={800}
+                        step={10}
+                        value={textProps.charSpacing}
+                        onChange={(e) => updateTextProperty('charSpacing', parseInt(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600 mb-1 block">Line Spacing</label>
+                      <input
+                        type="range"
+                        min={0.7}
+                        max={2}
+                        step={0.05}
+                        value={textProps.lineHeight}
+                        onChange={(e) => updateTextProperty('lineHeight', parseFloat(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Text Effects</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {TEXT_EFFECTS.map((effect) => (
+                        <button
+                          key={effect.value}
+                          onClick={() => updateTextEffect(effect.value)}
+                          className={`px-2 py-2 rounded-lg text-xs font-medium transition-colors ${
+                            textProps.textEffect === effect.value
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {effect.label}
+                        </button>
+                      ))}
+                    </div>
+                    {textProps.textEffect !== 'none' && (
+                      <div className="mt-3">
+                        <label className="text-sm text-gray-600 mb-1 block">Effect Strength</label>
+                        <input
+                          type="range"
+                          min={4}
+                          max={80}
+                          value={textProps.effectStrength}
+                          onChange={(e) =>
+                            updateTextEffect(textProps.textEffect, parseInt(e.target.value))
+                          }
+                          className="w-full"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-3 space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-900">Outline & Depth</h4>
+                    <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                      <div>
+                        <label className="text-sm text-gray-600 mb-1 block">Outline Width</label>
+                        <input
+                          type="range"
+                          min={0}
+                          max={12}
+                          value={textProps.strokeWidth}
+                          onChange={(e) =>
+                            updateTextProperty('strokeWidth', parseInt(e.target.value))
+                          }
+                          className="w-full"
+                        />
+                      </div>
+                      <input
+                        type="color"
+                        value={textProps.stroke}
+                        onChange={(e) => updateTextProperty('stroke', e.target.value)}
+                        className="w-10 h-10 rounded-lg cursor-pointer"
+                        title="Outline color"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        updateTextShadow({
+                          shadowEnabled: !textProps.shadowEnabled,
+                          extrudeEnabled: false,
+                        })
+                      }
+                      className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+                        textProps.shadowEnabled
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Shadow
+                    </button>
+
+                    {textProps.shadowEnabled && (
+                      <div className="space-y-2">
+                        <input
+                          type="color"
+                          value={textProps.shadowColor}
+                          onChange={(e) => updateTextShadow({ shadowColor: e.target.value })}
+                          className="w-full h-10 rounded-lg cursor-pointer"
+                          title="Shadow color"
+                        />
+                        <label className="text-sm text-gray-600 block">Shadow X</label>
+                        <input
+                          type="range"
+                          min={-30}
+                          max={30}
+                          value={textProps.shadowOffsetX}
+                          onChange={(e) =>
+                            updateTextShadow({ shadowOffsetX: parseInt(e.target.value) })
+                          }
+                          className="w-full"
+                        />
+                        <label className="text-sm text-gray-600 block">Shadow Y</label>
+                        <input
+                          type="range"
+                          min={-30}
+                          max={30}
+                          value={textProps.shadowOffsetY}
+                          onChange={(e) =>
+                            updateTextShadow({ shadowOffsetY: parseInt(e.target.value) })
+                          }
+                          className="w-full"
+                        />
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() =>
+                        updateTextShadow({
+                          extrudeEnabled: !textProps.extrudeEnabled,
+                          shadowEnabled: false,
+                        })
+                      }
+                      className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+                        textProps.extrudeEnabled
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Extrude
+                    </button>
+
+                    {textProps.extrudeEnabled && (
+                      <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                        <div>
+                          <label className="text-sm text-gray-600 mb-1 block">Depth</label>
+                          <input
+                            type="range"
+                            min={2}
+                            max={24}
+                            value={textProps.extrudeDepth}
+                            onChange={(e) =>
+                              updateTextShadow({ extrudeDepth: parseInt(e.target.value) })
+                            }
+                            className="w-full"
+                          />
+                        </div>
+                        <input
+                          type="color"
+                          value={textProps.extrudeColor}
+                          onChange={(e) => updateTextShadow({ extrudeColor: e.target.value })}
+                          className="w-10 h-10 rounded-lg cursor-pointer"
+                          title="Extrude color"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

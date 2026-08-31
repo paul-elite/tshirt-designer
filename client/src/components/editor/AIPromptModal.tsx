@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fabric } from 'fabric';
-import { Sparkles, RefreshCw, X } from 'lucide-react';
+import { Sparkles, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
@@ -66,7 +66,7 @@ export default function AIPromptModal({ isOpen, onClose }: AIPromptModalProps) {
 
     fabric.Image.fromURL(
       image.url,
-      (img) => {
+      (img: fabric.Image) => {
         // Scale to fit print area
         const maxWidth = 200;
         const maxHeight = 250;

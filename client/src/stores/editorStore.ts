@@ -5,10 +5,9 @@ import type {
   TShirtStyle,
   TShirtMaterial,
   PrintArea,
-  TShirtColor,
-  TSHIRT_COLORS,
 } from '../types';
 import { BASE_PRICE, TSHIRT_STYLES, TSHIRT_MATERIALS, PRINT_AREAS } from '../types';
+import { addEditorLayers, getArtworkJSON } from '../utils/canvasArtwork';
 
 interface HistoryState {
   past: string[];
@@ -120,7 +119,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { canvas, currentView } = get();
     if (!canvas) return;
 
-    const data = JSON.stringify(canvas.toJSON(['id']));
+    const data = JSON.stringify(getArtworkJSON(canvas));
     if (currentView === 'front') {
       set({ frontCanvasData: data });
     } else {
@@ -135,10 +134,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const data = view === 'front' ? frontCanvasData : backCanvasData;
     if (data) {
       canvas.loadFromJSON(JSON.parse(data), () => {
+        addEditorLayers(canvas, get().color);
         canvas.renderAll();
       });
     } else {
       canvas.clear();
+      addEditorLayers(canvas, get().color);
       canvas.renderAll();
     }
   },
@@ -174,7 +175,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { canvas, history } = get();
     if (!canvas) return;
 
-    const currentState = JSON.stringify(canvas.toJSON(['id']));
+    const currentState = JSON.stringify(getArtworkJSON(canvas));
     set({
       history: {
         past: [...history.past, currentState].slice(-50), // Keep last 50 states
@@ -190,10 +191,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { canvas, history } = get();
     if (!canvas || history.past.length === 0) return;
 
-    const currentState = JSON.stringify(canvas.toJSON(['id']));
+    const currentState = JSON.stringify(getArtworkJSON(canvas));
     const previousState = history.past[history.past.length - 1];
 
     canvas.loadFromJSON(JSON.parse(previousState), () => {
+      addEditorLayers(canvas, get().color);
       canvas.renderAll();
       set({
         history: {
@@ -210,10 +212,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { canvas, history } = get();
     if (!canvas || history.future.length === 0) return;
 
-    const currentState = JSON.stringify(canvas.toJSON(['id']));
+    const currentState = JSON.stringify(getArtworkJSON(canvas));
     const nextState = history.future[0];
 
     canvas.loadFromJSON(JSON.parse(nextState), () => {
+      addEditorLayers(canvas, get().color);
       canvas.renderAll();
       set({
         history: {

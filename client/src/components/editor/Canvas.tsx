@@ -1,15 +1,7 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { fabric } from 'fabric';
 import { useEditorStore } from '../../stores/editorStore';
-
-const CANVAS_WIDTH = 400;
-const CANVAS_HEIGHT = 480;
-const PRINT_AREA = {
-  x: 80,
-  y: 80,
-  width: 240,
-  height: 300,
-};
+import { addEditorLayers, CANVAS_HEIGHT, CANVAS_WIDTH, isEditorLayer } from '../../utils/canvasArtwork';
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -36,24 +28,7 @@ export default function Canvas() {
       preserveObjectStacking: true,
     });
 
-    // Add t-shirt mockup background
-    drawTShirtMockup(fabricCanvas, color);
-
-    // Add print area guide
-    const printArea = new fabric.Rect({
-      left: PRINT_AREA.x,
-      top: PRINT_AREA.y,
-      width: PRINT_AREA.width,
-      height: PRINT_AREA.height,
-      fill: 'transparent',
-      stroke: '#94a3b8',
-      strokeWidth: 1,
-      strokeDashArray: [5, 5],
-      selectable: false,
-      evented: false,
-      name: 'printArea',
-    });
-    fabricCanvas.add(printArea);
+    addEditorLayers(fabricCanvas, color);
 
     // Event handlers
     fabricCanvas.on('selection:created', (e) => {
@@ -74,7 +49,7 @@ export default function Canvas() {
 
     fabricCanvas.on('object:added', (e) => {
       const obj = e.target;
-      if (obj && obj.name !== 'tshirt' && obj.name !== 'printArea') {
+      if (obj && !isEditorLayer(obj)) {
         saveHistory();
       }
     });
@@ -94,11 +69,7 @@ export default function Canvas() {
   useEffect(() => {
     if (!canvas) return;
 
-    const tshirt = canvas.getObjects().find((obj) => obj.name === 'tshirt');
-    if (tshirt) {
-      (tshirt as fabric.Rect).set({ fill: color });
-      canvas.renderAll();
-    }
+    addEditorLayers(canvas, color);
   }, [canvas, color]);
 
   // Handle zoom
@@ -111,44 +82,6 @@ export default function Canvas() {
     canvas.renderAll();
   }, [canvas, zoom]);
 
-  // Draw t-shirt mockup
-  const drawTShirtMockup = (fabricCanvas: fabric.Canvas, shirtColor: string) => {
-    // Simple t-shirt shape using a rectangle for now
-    // In production, you'd use an SVG or image
-    const tshirt = new fabric.Rect({
-      left: 40,
-      top: 40,
-      width: 320,
-      height: 400,
-      rx: 20,
-      ry: 20,
-      fill: shirtColor,
-      stroke: '#d1d5db',
-      strokeWidth: 2,
-      selectable: false,
-      evented: false,
-      name: 'tshirt',
-    });
-
-    // Neckline
-    const neckline = new fabric.Ellipse({
-      left: 160,
-      top: 40,
-      rx: 40,
-      ry: 25,
-      fill: '#f3f4f6',
-      stroke: '#d1d5db',
-      strokeWidth: 2,
-      selectable: false,
-      evented: false,
-      name: 'tshirt',
-    });
-
-    fabricCanvas.add(tshirt);
-    fabricCanvas.add(neckline);
-    tshirt.sendToBack();
-  };
-
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -158,7 +91,7 @@ export default function Canvas() {
 
       // Delete
       if ((e.key === 'Delete' || e.key === 'Backspace') && activeObject) {
-        if (activeObject.name !== 'tshirt' && activeObject.name !== 'printArea') {
+        if (!isEditorLayer(activeObject)) {
           canvas.remove(activeObject);
           canvas.renderAll();
           saveHistory();

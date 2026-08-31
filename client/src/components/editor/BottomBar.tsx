@@ -1,5 +1,6 @@
-import { Undo2, Redo2, ZoomIn, ZoomOut, Save, ShoppingCart } from 'lucide-react';
+import { Undo2, Redo2, ZoomIn, ZoomOut, Save, ShoppingCart, Download } from 'lucide-react';
 import { useEditorStore } from '../../stores/editorStore';
+import { downloadArtworkSvg, hasArtwork } from '../../utils/canvasArtwork';
 import Button from '../ui/Button';
 
 interface BottomBarProps {
@@ -8,7 +9,12 @@ interface BottomBarProps {
 }
 
 export default function BottomBar({ onSave, onAddToCart }: BottomBarProps) {
-  const { canUndo, canRedo, undo, redo, zoom, setZoom, isDirty, designName } = useEditorStore();
+  const { canvas, canUndo, canRedo, undo, redo, zoom, setZoom, isDirty, designName } = useEditorStore();
+
+  const handleExportSvg = () => {
+    if (!canvas || !hasArtwork(canvas)) return;
+    downloadArtworkSvg(canvas, `${designName.replace(/\s+/g, '-').toLowerCase()}-artwork.svg`);
+  };
 
   return (
     <div className="h-16 bg-white border-t flex items-center justify-between px-4">
@@ -68,6 +74,14 @@ export default function BottomBar({ onSave, onAddToCart }: BottomBarProps) {
 
       {/* Right - Actions */}
       <div className="flex items-center space-x-3">
+        <Button
+          variant="outline"
+          onClick={handleExportSvg}
+          disabled={!canvas || !hasArtwork(canvas)}
+          leftIcon={<Download className="h-4 w-4" />}
+        >
+          Export SVG
+        </Button>
         <Button variant="outline" onClick={onSave} leftIcon={<Save className="h-4 w-4" />}>
           Save Design
         </Button>

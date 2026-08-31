@@ -7,6 +7,7 @@ import Input from '../ui/Input';
 import { useEditorStore } from '../../stores/editorStore';
 import { useCartStore } from '../../stores/cartStore';
 import { designsApi } from '../../services/api';
+import { getArtworkJSON } from '../../utils/canvasArtwork';
 
 interface SaveDesignModalProps {
   isOpen: boolean;
@@ -24,8 +25,6 @@ export default function SaveDesignModal({ isOpen, onClose, addToCart = false }: 
     setDesignId,
     setIsDirty,
     saveCurrentViewData,
-    frontCanvasData,
-    backCanvasData,
     size,
     color,
     colorName,
@@ -52,7 +51,7 @@ export default function SaveDesignModal({ isOpen, onClose, addToCart = false }: 
       // Combine front and back canvas data
       const state = useEditorStore.getState();
       const canvasData = JSON.stringify({
-        front: state.frontCanvasData ? JSON.parse(state.frontCanvasData) : canvas.toJSON(['id']),
+        front: state.frontCanvasData ? JSON.parse(state.frontCanvasData) : getArtworkJSON(canvas),
         back: state.backCanvasData ? JSON.parse(state.backCanvasData) : null,
       });
 
